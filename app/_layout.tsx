@@ -12,6 +12,7 @@ import { useColorScheme } from "@/hooks/useColorScheme";
 import { SafeAreaView, ScrollView, Text } from "react-native";
 import HomePostMessage from "@/components/HomePostMessage";
 import { SafeAreaFrameContext } from "react-native-safe-area-context";
+import PostView from "@/components/PostView";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -44,6 +45,7 @@ export default function RootLayout() {
         <ScrollView>
           {/* Insert your component here to test it! */}
           <HomePostMessage profileName="illbeanton" />
+          <PostView profileName="illbeanton" postText={"loloollloololoollloololoollloololoollloololoollloololoollloololoollloololoollloololoollloololoollloololoollloo"} timeAgo={"12h"}></PostView>
         </ScrollView>
       </SafeAreaView>
     </ThemeProvider>
