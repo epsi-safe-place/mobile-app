@@ -3,9 +3,10 @@ import Divider from "../Divider/Divider";
 
 interface ModalHeaderProps {
     closeModal: () => void;
+    submitPost: () => void
 }
 
-const ModalHeader: React.FC<ModalHeaderProps> = ({closeModal}) => {
+const ModalHeader: React.FC<ModalHeaderProps> = ({closeModal, submitPost}) => {
   return (
     <View>
       <View style={styles.modalHeader}>
@@ -15,7 +16,7 @@ const ModalHeader: React.FC<ModalHeaderProps> = ({closeModal}) => {
           onPress={closeModal}
         />
         <Text style={styles.modalTitle}>Nouvelle publication</Text>
-        <Button title="Publier" color="#171717" />
+        <Button title="Publier" color="#171717" onPress={submitPost} />
       </View>
       <Divider width={0.2} color="#BEBEBE" />
     </View>

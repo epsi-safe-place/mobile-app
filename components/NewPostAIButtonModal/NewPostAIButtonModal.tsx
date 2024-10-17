@@ -36,6 +36,7 @@ interface NewPostAIButtonModalProps {
   toxicityInfos: { results: AnalysisResult; score: number };
   postMessage: string;
   setPostMessage: (input: string) => void;
+  setShowScore: (visible: boolean) => void,
   hideModal: () => void;
 }
 
@@ -45,6 +46,7 @@ const NewPostAIButtonModal: React.FC<NewPostAIButtonModalProps> = ({
   toxicityInfos,
   postMessage,
   setPostMessage,
+  setShowScore,
   hideModal,
 }) => {
   const [isTextLoaded, setTextIsLoaded] = useState(false);
@@ -100,7 +102,8 @@ const NewPostAIButtonModal: React.FC<NewPostAIButtonModalProps> = ({
             <TouchableScale
               transitionDuration={100}
               onPress={() => {
-                setPostMessage(rephrasedText);
+                setPostMessage(rephrasedText)
+                setShowScore(true)
                 hideModal();
               }}
               style={[

@@ -8,8 +8,9 @@ import {
   TextInput,
   View,
   Animated,
+  Alert,
 } from "react-native";
-import Divider from "./Divider/Divider";
+import Divider from "../Divider/Divider";
 import { FontAwesomeIcon } from "@fortawesome/react-native-fontawesome";
 import {
   faImages,
@@ -20,11 +21,11 @@ import {
   faBarsStaggered,
 } from "@fortawesome/free-solid-svg-icons";
 import globalStyles from "@/app/styles/globalStyles";
-import { useEffect, useRef, useState } from "react";
-import FleurViolet from "./Svg/FleurViolet";
+import { useContext, useEffect, useRef, useState } from "react";
+import FleurViolet from "../Svg/FleurViolet";
 import { createShimmerPlaceholder } from "react-native-shimmer-placeholder";
 import LinearGradient from "expo-linear-gradient";
-import ShimmerText from "./ShimmerText/ShimmerText";
+import ShimmerText from "../ShimmerText/ShimmerText";
 import AnimatedNumbers from "react-native-animated-numbers";
 
 import Reanimated, {
@@ -39,16 +40,18 @@ import Reanimated, {
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
-import RephraseButton from "./RephraseButton/RephraseButton";
-import FeedbackButton from "./FeedbackButton/FeedbackButton";
+import RephraseButton from "../RephraseButton/RephraseButton";
+import FeedbackButton from "../FeedbackButton/FeedbackButton";
 import colors from "@/app/styles/theme";
-import ModalHeader from "./ModalHeader/ModalHeader";
+import ModalHeader from "../ModalHeader/ModalHeader";
 import Moderation from "@/service/api/moderation";
-import { calculateScore, getColorScore } from "../utils/utils";
-import NewPostAIButtonModal from "./NewPostAIButtonModal/NewPostAIButtonModal";
+import { calculateScore, getColorScore } from "../../utils/utils";
+import NewPostAIButtonModal from "../NewPostAIButtonModal/NewPostAIButtonModal";
 import SwipeModal, {
   SwipeModalPublicMethods,
 } from "@birdwingo/react-native-swipe-modal";
+import { UserContext } from "../contexts/UserContext";
+import Posts from "@/service/api/posts";
 
 const DURATION = 500;
 const DELAY = 1000;
@@ -56,7 +59,6 @@ const DELAY = 1000;
 interface NewPostModalProps {
   modalVisible: boolean;
   setModalVisible: (visible: boolean) => void;
-  profileName: string;
   profilePicturePath?: string;
 }
 
@@ -70,12 +72,11 @@ interface AnalysisResult {
 const NewPostModal: React.FC<NewPostModalProps> = ({
   modalVisible,
   setModalVisible,
-  profileName,
   profilePicturePath,
 }) => {
   const profilePictureSource = profilePicturePath
     ? { uri: profilePicturePath }
-    : require("../assets/images/profileDefault.png");
+    : require("../../assets/images/profileDefault.png");
   const textInputRef = useRef<TextInput>(null); // Specify the type as TextInput
   const [postMessage, setPostMessage] = useState("");
   const [sendMessageToAPI, setSendMessageToAPI] = useState(false);
@@ -91,8 +92,11 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
     },
     score: 0,
   });
-  const [showScore, setShowScore] = useState(false);
+  const [showScore, setShowScore] = useState(true);
   const [isRephrasingModal, setIsRephrasingModal] = useState(true);
+
+  const { user, saveUser, logout } = useContext(UserContext);
+  const [username, setUsername] = useState<string>(user ? user.username : "");
 
   // FleurVioletSpinning
 
@@ -146,7 +150,7 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
       results: toxicity_results as AnalysisResult, // Ensure the correct type is assigned
       score: toxicity_score,
     }));
-    progressiveApparition();
+    setShowScore(false)
   };
 
   const opacityScore = useSharedValue<number>(0);
@@ -171,8 +175,26 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
         withTiming(1, { duration: DURATION })
       );
     }
+  };
 
-    setShowScore(!showScore);
+  const submitPost = async () => {
+    try {
+      if (toxicityInfos.score > 50) {
+        Alert.alert(
+          "Attention !",
+          `Votre score est de ${Math.round(toxicityInfos.score)}%, il dépasse les 50% préconisés par Safeplace.`,
+          [{ text: "OK" }]
+        );
+      } else {
+        await Posts.postOne(user?.Id_User, postMessage, toxicityInfos.score);
+        setModalVisible(false)
+      }
+    } catch (error) {
+      Alert.alert("Erreur", "Votre post n'a pas pu être publié", [
+        { text: "OK", onPress: () => console.log("OK Pressed") },
+      ]);
+      console.error("Failed to fetch posts:", error);
+    }
   };
 
   const iaModalRef = useRef<SwipeModalPublicMethods>(null);
@@ -199,9 +221,17 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
   }, [modalVisible]);
 
   useEffect(() => {
-    if (showScore) {
-      progressiveApparition();
-    }
+    progressiveApparition()
+  }, [showScore]);
+
+  useEffect(() => {
+    // setShowScore(false)
+    // console.log(postMessage);
+    
+    // if (showScore) {
+    //   progressiveApparition();
+    // }
+    setShowScore(true)
     setSendMessageToAPI(false);
     if (postMessage.trim() !== "") {
       const timeout = setTimeout(() => {
@@ -220,10 +250,10 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
       presentationStyle="pageSheet"
       transparent={false}
       visible={modalVisible}
-      onRequestClose={() => setModalVisible(false)}
+      onRequestClose={() => onCloseModal}
     >
       <View style={styles.modalContainer}>
-        <ModalHeader closeModal={onCloseModal} />
+        <ModalHeader closeModal={onCloseModal} submitPost={submitPost} />
 
         <View style={styles.postMessageContainer}>
           <Image style={styles.image} source={profilePictureSource} />
@@ -231,7 +261,7 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
             style={styles.inputContainer}
             onPress={() => setModalVisible(true)}
           >
-            <Text style={styles.profileName}>{profileName}</Text>
+            <Text style={styles.profileName}>{user?.first_name}{user?.last_name}</Text>
             <TextInput
               ref={textInputRef}
               value={postMessage}
@@ -334,14 +364,17 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
             <RephraseButton
               color={colors.primary}
               onPress={() => {
-                setIsRephrasingModal(true)
-                showModal()
+                setIsRephrasingModal(true);
+                showModal();
               }}
             />
-            <FeedbackButton color={colors.black} onPress={() => {
-                setIsRephrasingModal(false)
-                showModal()
-              }} />
+            <FeedbackButton
+              color={colors.black}
+              onPress={() => {
+                setIsRephrasingModal(false);
+                showModal();
+              }}
+            />
           </Reanimated.View>
         </View>
       </View>
@@ -352,6 +385,7 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
         toxicityInfos={toxicityInfos}
         postMessage={postMessage}
         setPostMessage={setPostMessage}
+        setShowScore={setShowScore}
         hideModal={hideModal}
       />
     </Modal>
