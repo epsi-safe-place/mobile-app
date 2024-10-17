@@ -35,6 +35,7 @@ import Reanimated, {
   FlipInEasyX,
   useAnimatedStyle,
   useSharedValue,
+  withDelay,
   withRepeat,
   withTiming,
 } from "react-native-reanimated";
@@ -43,12 +44,27 @@ import FeedbackButton from "./FeedbackButton/FeedbackButton";
 import colors from "@/app/styles/theme";
 import ModalHeader from "./ModalHeader/ModalHeader";
 import Moderation from "@/service/api/moderation";
+import { calculateScore, getColorScore } from "../utils/utils";
+import NewPostAIButtonModal from "./NewPostAIButtonModal/NewPostAIButtonModal";
+import SwipeModal, {
+  SwipeModalPublicMethods,
+} from "@birdwingo/react-native-swipe-modal";
+
+const DURATION = 500;
+const DELAY = 1000;
 
 interface NewPostModalProps {
   modalVisible: boolean;
   setModalVisible: (visible: boolean) => void;
   profileName: string;
   profilePicturePath?: string;
+}
+
+interface AnalysisResult {
+  categories: { [key: string]: boolean };
+  category_applied_input_types: { [key: string]: string[] };
+  category_scores: { [key: string]: number };
+  flagged: boolean;
 }
 
 const NewPostModal: React.FC<NewPostModalProps> = ({
@@ -63,9 +79,20 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
   const textInputRef = useRef<TextInput>(null); // Specify the type as TextInput
   const [postMessage, setPostMessage] = useState("");
   const [sendMessageToAPI, setSendMessageToAPI] = useState(false);
-  const [toxicityScore, setToxicityScore] = useState(0);
-
-  const shimmerAnim = useRef(new Animated.Value(0)).current;
+  const [toxicityInfos, setToxicityInfos] = useState<{
+    results: AnalysisResult;
+    score: number;
+  }>({
+    results: {
+      categories: {}, // Initialize with an empty object or appropriate default values
+      category_applied_input_types: {},
+      category_scores: {},
+      flagged: false, // Set a default value for flagged
+    },
+    score: 0,
+  });
+  const [showScore, setShowScore] = useState(false);
+  const [isRephrasingModal, setIsRephrasingModal] = useState(true);
 
   // FleurVioletSpinning
 
@@ -80,6 +107,78 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
     };
   });
 
+  const onChangePostMessageText = (input: string) => {
+    setPostMessage(input);
+  };
+
+  const onCloseModal = () => {
+    setModalVisible(false);
+    setPostMessage("");
+    setSendMessageToAPI(false);
+    setShowScore(false);
+    setToxicityInfos({
+      results: {
+        categories: {}, // Initialize with an empty object or appropriate default values
+        category_applied_input_types: {},
+        category_scores: {},
+        flagged: false, // Set a default value for flagged
+      },
+      score: 0,
+    });
+  };
+
+  const getToxicityScore = async (input: string) => {
+    let toxicity_results = await Moderation.getTextScore(input);
+    // let toxicity_results = {
+    //   categories: {}, // Initialize with an empty object or appropriate default values
+    //   category_applied_input_types: {},
+    //   category_scores: {},
+    //   flagged: false, // Set a default value for flagged
+    // };
+    if (typeof toxicity_results === "number") {
+      // If toxicity_results is a number, it means an error occurred and we should handle it
+      console.error("Error fetching toxicity score:", toxicity_results);
+      return;
+    }
+    let toxicity_score = calculateScore(toxicity_results);
+    setToxicityInfos((prev) => ({
+      ...prev,
+      results: toxicity_results as AnalysisResult, // Ensure the correct type is assigned
+      score: toxicity_score,
+    }));
+    progressiveApparition();
+  };
+
+  const opacityScore = useSharedValue<number>(0);
+  const opacityButtons = useSharedValue<number>(0);
+  const progressiveApparition = () => {
+    if (showScore) {
+      opacityButtons.value = withDelay(
+        0 * DELAY,
+        withTiming(0, { duration: DURATION })
+      );
+      opacityScore.value = withDelay(
+        0 * DELAY,
+        withTiming(0, { duration: DURATION })
+      );
+    } else {
+      opacityScore.value = withDelay(
+        0 * DELAY,
+        withTiming(1, { duration: DURATION })
+      );
+      opacityButtons.value = withDelay(
+        1 * DELAY,
+        withTiming(1, { duration: DURATION })
+      );
+    }
+
+    setShowScore(!showScore);
+  };
+
+  const iaModalRef = useRef<SwipeModalPublicMethods>(null);
+  const showModal = () => iaModalRef.current?.show(); // Call this function to show modal
+  const hideModal = () => iaModalRef.current?.hide(); // Call this function to hide modal
+
   useEffect(() => {
     // Start rotating animation (360 degrees repeated)
     rotateValue.value = withRepeat(
@@ -92,29 +191,17 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
     );
   }, []);
 
-  const onChangePostMessageText = (input: string) => {
-    setPostMessage(input);
-  };
-
-  const getToxicityScore = async (input: string) => {
-    let toxicity_score = (await Moderation.getTextScore(input)) as number; // Type assertion
-    setToxicityScore(toxicity_score);
-  };
-
-  const onCloseModal = () => {
-    setModalVisible(false)
-    setPostMessage("")
-    setSendMessageToAPI(false)
-    setToxicityScore(0)
-  }
-
   useEffect(() => {
     if (modalVisible) {
+      // showModal();
       textInputRef.current?.focus();
     }
   }, [modalVisible]);
 
   useEffect(() => {
+    if (showScore) {
+      progressiveApparition();
+    }
     setSendMessageToAPI(false);
     if (postMessage.trim() !== "") {
       const timeout = setTimeout(() => {
@@ -208,7 +295,7 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
                 <Reanimated.View
                   style={[styles.fleurVioletContainer, rotatingStyle]}
                 >
-                  <FleurViolet width={15} height={15} />
+                  <FleurViolet width={18} height={18} />
                 </Reanimated.View>
                 <Text style={styles.analyse}>Analyse...</Text>
                 {/* <ShimmerText /> */}
@@ -216,24 +303,57 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
             )}
           </Pressable>
         </View>
-        <View>
-          <Text>Votre message a obtenu un score de</Text>
-          <View style={styles.scoreContainer}>
+        <View style={styles.scoreContainer}>
+          <Reanimated.Text
+            style={[styles.scoreLabel, { opacity: opacityScore }]}
+          >
+            Votre message a obtenu un score de toxicité de
+          </Reanimated.Text>
+          <Reanimated.View
+            style={[styles.scoreResultContainer, { opacity: opacityScore }]}
+          >
             <AnimatedNumbers
-              animateToNumber={toxicityScore}
-              fontStyle={styles.scoreStyle}
+              animateToNumber={toxicityInfos.score}
+              fontStyle={[
+                styles.scoreStyle,
+                { color: `${getColorScore(toxicityInfos.score)}` },
+              ]}
             />
-            <Text style={styles.percentageSymbol}>%</Text>
-          </View>
-          <View style={styles.buttonsContainer}>
+            <Text
+              style={[
+                styles.percentageSymbol,
+                { color: `${getColorScore(toxicityInfos.score)}` },
+              ]}
+            >
+              %
+            </Text>
+          </Reanimated.View>
+          <Reanimated.View
+            style={[styles.buttonsContainer, { opacity: opacityButtons }]}
+          >
             <RephraseButton
               color={colors.primary}
-              onPress={() => setToxicityScore(35)}
+              onPress={() => {
+                setIsRephrasingModal(true)
+                showModal()
+              }}
             />
-            <FeedbackButton color={colors.black} />
-          </View>
+            <FeedbackButton color={colors.black} onPress={() => {
+                setIsRephrasingModal(false)
+                showModal()
+              }} />
+          </Reanimated.View>
         </View>
       </View>
+
+      <NewPostAIButtonModal
+        isRephrasing={isRephrasingModal}
+        reference={iaModalRef}
+        toxicityInfos={toxicityInfos}
+        postMessage={postMessage}
+        setPostMessage={setPostMessage}
+        hideModal={hideModal}
+      />
     </Modal>
   );
 };
@@ -286,22 +406,36 @@ const styles = StyleSheet.create({
     padding: 2,
   },
   analyse: {
-    fontFamily: "Helvetica",
+    fontFamily: "Helvetica-Bold",
     fontSize: 15,
   },
   scoreContainer: {
     display: "flex",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  scoreLabel: {
+    paddingTop: 25,
+    paddingBottom: 15,
+    fontFamily: "Helvetica-Bold",
+    color: colors.black,
+  },
+  scoreResultContainer: {
+    display: "flex",
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "flex-end",
-    paddingVertical: 25,
+    paddingBottom: 20,
   },
   scoreStyle: {
     fontSize: 70,
     fontWeight: "bold",
+    fontFamily: "BricolageGrotesque-SemiBold",
   },
   percentageSymbol: {
     paddingVertical: 15,
+    fontSize: 20,
+    fontWeight: "bold",
   },
   buttonsContainer: {
     paddingHorizontal: 15,

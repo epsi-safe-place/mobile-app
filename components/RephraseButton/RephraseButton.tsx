@@ -8,8 +8,8 @@ import {
 import AIStar from "../Svg/AIStar";
 import globalStyles from "@/app/styles/globalStyles";
 import colors from "@/app/styles/theme";
-import DoubleAIStar from "../Svg/DoubleAIStar";
-import TouchableScale from '@jonny/touchable-scale';
+import DoubleAIStar from "../Svg/DoubleAIStarWhite";
+import TouchableScale from "@jonny/touchable-scale";
 
 interface RephraseButtonProps {
   color: string;
@@ -18,12 +18,9 @@ interface RephraseButtonProps {
 
 const RephraseButton: React.FC<RephraseButtonProps> = ({ color, onPress }) => {
   return (
-    <TouchableScale
-    transitionDuration={100}
-    onPress={onPress}
-    >
+    <TouchableScale transitionDuration={100} onPress={onPress}>
       <ImageBackground
-      borderRadius={10}
+        borderRadius={10}
         source={require("../../assets/images/primaryMeshGradient.jpeg")}
         style={[{ shadowColor: color }, styles.buttonStyle]}
       >

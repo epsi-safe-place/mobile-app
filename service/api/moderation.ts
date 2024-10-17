@@ -16,13 +16,7 @@ export default class Moderation {
           },
         }
       );
-      let max_score = Math.max(
-        ...(Object.values(response.data.results[0].category_scores) as number[])
-      );
-
-      // Conversion en pourcentage
-      const toxicity_score = max_score * 100;
-      return toxicity_score;
+      return response.data.results[0]
     } catch (error) {
       return error;
     }

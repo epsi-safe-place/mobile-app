@@ -1,7 +1,7 @@
 import * as React from "react"
 import Svg, { Path, G } from "react-native-svg"
 
-function DoubleAIStar(props: any) {
+function DoubleAIStarWhite(props: any) {
   return (
     <Svg viewBox="0 0 78 83" xmlns="http://www.w3.org/2000/svg" {...props}>
       <G
@@ -17,4 +17,4 @@ function DoubleAIStar(props: any) {
   )
 }
 
-export default DoubleAIStar;
+export default DoubleAIStarWhite;

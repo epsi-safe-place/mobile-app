@@ -6,11 +6,13 @@ import TouchableScale from '@jonny/touchable-scale';
 
 interface FeedbackButtonProps {
   color: string;
+  onPress: () => void;
 }
 
-const FeedbackButton: React.FC<FeedbackButtonProps> = ({ color }) => {
+const FeedbackButton: React.FC<FeedbackButtonProps> = ({ color, onPress }) => {
   return (
     <TouchableScale
+    onPress={onPress}
     transitionDuration={100} style={[{ backgroundColor: color, shadowColor: color }, styles.buttonStyle]}>
       <Text style={[styles.buttonTextStyle, { color: colors.white }]}>
         Feedback
