@@ -1,3 +1,4 @@
+import React, { useEffect, useState } from "react";
 import {
   DarkTheme,
   DefaultTheme,
@@ -5,13 +6,17 @@ import {
 } from "@react-navigation/native";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
-import { useEffect } from "react";
-import "react-native-reanimated";
+import { SafeAreaView, ScrollView } from "react-native";
+import HomePostMessage from "@/components/HomePostMessage";
+import PostView from "@/components/PostView";
+import SensibilisationPage from "@/components/SensibilisationPage"; // Assurez-vous que ce chemin est correct
 
 import { useColorScheme } from "@/hooks/useColorScheme";
 import { SafeAreaView, ScrollView, Text } from "react-native";
 import HomePostMessage from "@/components/HomePostMessage";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
+import LoginPage from "@/components/LoginPage";
+import SignupPage from "./screens/SignupPage";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
 SplashScreen.preventAutoHideAsync();
@@ -35,6 +40,8 @@ export default function RootLayout() {
     "BricolageGrotesque-ExtraLight": require("../assets/fonts/BricolageGrotesque/BricolageGrotesque-ExtraLight.ttf"),
   });
 
+  const [showSensibilisation, setShowSensibilisation] = useState(true);
+
   useEffect(() => {
     if (fontsLoaded) {
       SplashScreen.hideAsync();
@@ -45,14 +52,29 @@ export default function RootLayout() {
     return null;
   }
 
+  const handleSensibilisationClose = () => {
+    setShowSensibilisation(false); // Ferme la page de sensibilisation après interaction
+  };
+
   return (
     <GestureHandlerRootView>
       <ThemeProvider value={colorScheme === "dark" ? DarkTheme : DefaultTheme}>
-        <SafeAreaView>
-          <ScrollView>
-            {/* Insert your component here to test it! */}
-            <HomePostMessage profileName="illbeanton" />
-          </ScrollView>
+        <SafeAreaView style={{ flex: 1 }}>
+          {showSensibilisation ? (
+            <SensibilisationPage onClose={handleSensibilisationClose} />
+          ) : (
+            <ScrollView>
+              {/* Affiche les autres composants ici */}
+              {/* <LoginPage></LoginPage> */}
+              <SignupPage></SignupPage>
+              {/* <HomePostMessage profileName="illbeanton" />
+              <PostView
+                profileName="illbeanton"
+                postText={"Voila je tweet et je suis gentil"}
+                timeAgo={"12h"}
+              /> */}
+            </ScrollView>
+          )}
         </SafeAreaView>
       </ThemeProvider>
     </GestureHandlerRootView>
