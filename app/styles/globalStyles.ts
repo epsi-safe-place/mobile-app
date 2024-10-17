@@ -6,6 +6,11 @@ import colors from './theme'; // Assurez-vous que le chemin est correct
 const globalStyles = StyleSheet.create({
     text: {
         color: colors.black,
+        fontFamily: "Helvetica"
+    },
+    title: {
+        color: colors.primary,
+        fontFamily: "BricolageGrotesque-Bold"
     },
     textSecondary: {
         color: colors.gray,
