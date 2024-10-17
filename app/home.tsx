@@ -25,6 +25,7 @@ import { Skeleton } from "moti/skeleton";
 import Spacer from "@/components/Spacer/Spacer";
 import { calculateTimeAgo } from "@/utils/utils";
 import SafePlaceLogo from "@/components/Svg/SafePlaceLogo";
+import { router } from "expo-router";
 
 // Define a type for the post
 type Post = {
@@ -103,15 +104,23 @@ const Homepage = () => {
       </View>
       <Divider />
       {posts.length > 0 ? ( // Check if posts array has items
-        posts.sort((a, b) => new Date(b.date_creation).getTime() - new Date(a.date_creation).getTime()).map((post) => (
-          <PostView
-            key={post.Id_Post} // Use a unique identifier for the key
-            profileName={`${post.user.first_name}${post.user.last_name}`} // Corrected usage
-            postText={post.content}
-            timeAgo={calculateTimeAgo(post.timeAgo)}
-            commentAction={() => setCommentModalVisible(true)}
-          />
-        ))
+        posts
+          .sort(
+            (a, b) =>
+              new Date(b.date_creation).getTime() -
+              new Date(a.date_creation).getTime()
+          )
+          .map((post) => (
+            <Pressable key={post.Id_Post} onPress={() => router.push(`/post/${post.Id_Post}`)}>
+              <PostView
+                // Use a unique identifier for the key
+                profileName={`${post.user.first_name}${post.user.last_name}`} // Corrected usage
+                postText={post.content}
+                timeAgo={calculateTimeAgo(post.date_creation)}
+                commentAction={() => setCommentModalVisible(true)}
+              />
+            </Pressable>
+          ))
       ) : (
         <>
           <Skeleton colorMode="light" width={200} />

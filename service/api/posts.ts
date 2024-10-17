@@ -12,6 +12,16 @@ export default class Posts {
     }
   }
 
+  static async getById(id: string) {
+    try {
+      const response = await axios.get(`${API_URL}/posts/${id}`);
+      return response.data;
+    } catch (error) {
+      console.error(error);
+      return error;
+    }
+  }
+
   static async postOne(userID: string = "", content: string, toxic_score: number) {
     try {
       const response = await axios.post(`${API_URL}/posts`, {

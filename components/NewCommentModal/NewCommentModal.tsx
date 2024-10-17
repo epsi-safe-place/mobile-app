@@ -52,15 +52,16 @@ import SwipeModal, {
 } from "@birdwingo/react-native-swipe-modal";
 import { UserContext } from "../contexts/UserContext";
 import Posts from "@/service/api/posts";
+import Comments from "@/service/api/comments";
 
 const DURATION = 500;
 const DELAY = 1000;
 
-interface NewPostModalProps {
+interface NewCommentModalProps {
   modalVisible: boolean;
   setModalVisible: (visible: boolean) => void;
   profilePicturePath?: string;
-  
+  idPost: string;
 }
 
 interface AnalysisResult {
@@ -70,10 +71,11 @@ interface AnalysisResult {
   flagged: boolean;
 }
 
-const NewPostModal: React.FC<NewPostModalProps> = ({
+const NewCommentModal: React.FC<NewCommentModalProps> = ({
   modalVisible,
   setModalVisible,
   profilePicturePath,
+  idPost,
 }) => {
   const profilePictureSource = profilePicturePath
     ? { uri: profilePicturePath }
@@ -152,8 +154,8 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
       results: toxicity_results as AnalysisResult, // Ensure the correct type is assigned
       score: toxicity_score,
     }));
-    setShowScore(false)
-    setCanSubmit(true)
+    setShowScore(false);
+    setCanSubmit(true);
   };
 
   const opacityScore = useSharedValue<number>(0);
@@ -185,12 +187,19 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
       if (toxicityInfos.score > 50) {
         Alert.alert(
           "Attention !",
-          `Votre score est de ${Math.floor(toxicityInfos.score)}%, il dépasse les 50% préconisés par Safeplace.`,
+          `Votre score est de ${Math.floor(
+            toxicityInfos.score
+          )}%, il dépasse les 50% préconisés par Safeplace.`,
           [{ text: "OK" }]
         );
       } else {
-        await Posts.postOne(user?.Id_User, postMessage, toxicityInfos.score);
-        setModalVisible(false)
+        await Comments.postOne(
+          user?.Id_User,
+          postMessage,
+          toxicityInfos.score,
+          idPost
+        );
+        onCloseModal();
       }
     } catch (error) {
       Alert.alert("Erreur", "Votre post n'a pas pu être publié", [
@@ -224,18 +233,18 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
   }, [modalVisible]);
 
   useEffect(() => {
-    progressiveApparition()
+    progressiveApparition();
   }, [showScore]);
 
   useEffect(() => {
     // setShowScore(false)
     // console.log(postMessage);
-    
+
     // if (showScore) {
     //   progressiveApparition();
     // }
-    setCanSubmit(false)
-    setShowScore(true)
+    setCanSubmit(false);
+    setShowScore(true);
     setSendMessageToAPI(false);
     if (postMessage.trim() !== "") {
       const timeout = setTimeout(() => {
@@ -257,7 +266,13 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
       onRequestClose={() => onCloseModal}
     >
       <View style={styles.modalContainer}>
-        <ModalHeader closeModal={onCloseModal} submitPost={submitPost} canSubmit={canSubmit}>Nouvelle publication</ModalHeader>
+        <ModalHeader
+          closeModal={onCloseModal}
+          submitPost={submitPost}
+          canSubmit={canSubmit}
+        >
+          Nouveau commentaire
+        </ModalHeader>
 
         <View style={styles.postMessageContainer}>
           <Image style={styles.image} source={profilePictureSource} />
@@ -265,7 +280,10 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
             style={styles.inputContainer}
             onPress={() => setModalVisible(true)}
           >
-            <Text style={styles.profileName}>{user?.first_name}{user?.last_name}</Text>
+            <Text style={styles.profileName}>
+              {user?.first_name}
+              {user?.last_name}
+            </Text>
             <TextInput
               ref={textInputRef}
               value={postMessage}
@@ -396,7 +414,7 @@ const NewPostModal: React.FC<NewPostModalProps> = ({
   );
 };
 
-export default NewPostModal;
+export default NewCommentModal;
 
 const styles = StyleSheet.create({
   modalContainer: {
