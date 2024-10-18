@@ -22,6 +22,8 @@ import Rephrasing from "@/service/api/rephrasing";
 import Reanimated, { FadeIn, FadeOut } from "react-native-reanimated";
 import globalStyles from "@/app/styles/globalStyles";
 import DoubleAIStarBlack from "../Svg/DoubleAIStarBlack";
+import { calculateScore } from "@/utils/utils";
+import Moderation from "@/service/api/moderation";
 
 interface AnalysisResult {
   categories: { [key: string]: boolean };
@@ -30,53 +32,69 @@ interface AnalysisResult {
   flagged: boolean;
 }
 
-interface NewPostAIButtonModalProps {
-  isRephrasing: boolean;
+interface FeedBackAIModalProps {
   reference: React.RefObject<SwipeModalPublicMethods>;
-  toxicityInfos: { results: AnalysisResult; score: number };
   postMessage: string;
-  setPostMessage: (input: string) => void;
-  setShowScore: (visible: boolean) => void,
   hideModal: () => void;
 }
 
-const NewPostAIButtonModal: React.FC<NewPostAIButtonModalProps> = ({
-  isRephrasing,
+const FeedBackAIModal: React.FC<FeedBackAIModalProps> = ({
   reference,
-  toxicityInfos,
   postMessage,
-  setPostMessage,
-  setShowScore,
   hideModal,
 }) => {
   const [isTextLoaded, setTextIsLoaded] = useState(false);
   const [rephrasedText, setRephrasedText] = useState("");
   const [feedbackText, setFeedbackText] = useState("");
   const [isModalVisible, setIsModalVisible] = useState(false); // Nouveau état pour gérer la visibilité du modal
+  const [toxicityInfos, setToxicityInfos] = useState<{
+    results: AnalysisResult;
+    score: number;
+  }>(); // Nouveau état pour gérer la visibilité du modal
 
-  const rephraseTheText = async () => {
-    let response = (await Rephrasing.getRephrasing(
-      toxicityInfos,
-      postMessage
-    )) as { data: { choices: { message: { content: string } }[] } }; // Ensure choices is an array
-    let textResponse = response.data.choices[0].message.content; // Access the first element safely
-    textResponse = textResponse.replace(/^"|"$/g, ""); // Remove double quotes from the start and end
-    setRephrasedText(textResponse);
-    // setRephrasedText(
-    //   "Je voudrais aborder les retards que nous rencontrons souvent. Cela complique un peu les choses pour moi, et j'aimerais discuter de comment nous pourrions améliorer la situation. Merci de votre compréhension !"
-    // );
-    setTextIsLoaded(true);
+  const getToxicityScore = async (input: string) => {
+    try {
+      const toxicity_results = await Moderation.getTextScore(input);
+      if (typeof toxicity_results === "number") {
+        // Gestion des erreurs si toxicity_results est un nombre (par exemple, un code d'erreur)
+        console.error("Error fetching toxicity score:", toxicity_results);
+        return null;
+      }
+      const toxicity_score = calculateScore(toxicity_results);
+
+      // Retourner les résultats au lieu de mettre à jour l'état
+      return {
+        results: toxicity_results as AnalysisResult,
+        score: toxicity_score,
+      };
+    } catch (error) {
+      console.error("Error in getToxicityScore:", error);
+      return null;
+    }
   };
 
   const getFeedBackText = async () => {
-    let response = (await Rephrasing.getFeedback(
-      toxicityInfos,
-      postMessage
-    )) as { data: { choices: { message: { content: string } }[] } }; // Ensure choices is an array
-    let textResponse = response.data.choices[0].message.content; // Access the first element safely
-    textResponse = textResponse.replace(/^"|"$/g, ""); // Remove double quotes from the start and end
-    setFeedbackText(textResponse);
-    setTextIsLoaded(true);
+    const toxicityInfos = await getToxicityScore(postMessage);
+
+    if (toxicityInfos) {
+      try {
+        // Appel à l'API de reformulation avec les informations de toxicité
+        const response = (await Rephrasing.getFeedback(
+          toxicityInfos,
+          postMessage
+        )) as { data: { choices: { message: { content: string } }[] } };
+
+        // Extraction du texte de feedback
+        let textResponse = response.data.choices[0].message.content;
+        textResponse = textResponse.replace(/^"|"$/g, ""); // Suppression des guillemets au début et à la fin
+        setFeedbackText(textResponse);
+        setTextIsLoaded(true);
+      } catch (error) {
+        console.error("Error in getFeedBackText:", error);
+      }
+    } else {
+      console.error("Impossible d'obtenir les informations de toxicité");
+    }
   };
 
   const displayContent = () => {
@@ -87,7 +105,7 @@ const NewPostAIButtonModal: React.FC<NewPostAIButtonModalProps> = ({
           style={styles.normalText}
           sequence={[
             {
-              text: isRephrasing ? rephrasedText : feedbackText,
+              text: feedbackText,
               typeSpeed: 10,
             },
           ]}
@@ -98,55 +116,25 @@ const NewPostAIButtonModal: React.FC<NewPostAIButtonModalProps> = ({
           entering={FadeIn}
           exiting={FadeOut}
         >
-          {isRephrasing ? (
-            <TouchableScale
-              transitionDuration={100}
-              onPress={() => {
-                setPostMessage(rephrasedText)
-                setShowScore(true)
-                hideModal();
-              }}
-              style={[
-                {
-                  backgroundColor: colors.black,
-                  shadowColor: colors.black,
-                  borderRadius: 10,
-                  marginBottom: 25,
-                },
-              ]}
-            >
-              <ImageBackground
-                borderRadius={10}
-                source={require("../../assets/images/primaryMeshGradient.jpeg")}
-                style={[{ shadowColor: colors.primary }, styles.buttonStyle]}
-              >
-                <DoubleAIStar width={18} height={18} />
-                <Text style={[styles.buttonTextStyle, { color: colors.white }]}>
-                  Appliquer les modifications
-                </Text>
-              </ImageBackground>
-            </TouchableScale>
-          ) : (
-            <TouchableScale
-              transitionDuration={100}
-              onPress={() => {
-                hideModal();
-              }}
-              style={[
-                {
-                  backgroundColor: colors.black,
-                  shadowColor: colors.black,
-                  borderRadius: 10,
-                  marginBottom: 25,
-                },
-                styles.buttonStyle,
-              ]}
-            >
-              <Text style={[styles.buttonTextStyle, { color: colors.white }]}>
-                J'ai compris !
-              </Text>
-            </TouchableScale>
-          )}
+          <TouchableScale
+            transitionDuration={100}
+            onPress={() => {
+              hideModal();
+            }}
+            style={[
+              {
+                backgroundColor: colors.black,
+                shadowColor: colors.black,
+                borderRadius: 10,
+                marginBottom: 25,
+              },
+              styles.buttonStyle,
+            ]}
+          >
+            <Text style={[styles.buttonTextStyle, { color: colors.white }]}>
+              J'ai compris !
+            </Text>
+          </TouchableScale>
         </Reanimated.View>
       </View>
     );
@@ -154,11 +142,7 @@ const NewPostAIButtonModal: React.FC<NewPostAIButtonModalProps> = ({
 
   useEffect(() => {
     if (isModalVisible) {
-      if (isRephrasing) {
-        rephraseTheText();
-      } else {
-        getFeedBackText();
-      }
+      getFeedBackText();
     }
   }, [isModalVisible]); // Utiliser l'état isModalVisible pour lancer l'appel API uniquement lorsque le modal est visible
 
@@ -176,21 +160,12 @@ const NewPostAIButtonModal: React.FC<NewPostAIButtonModalProps> = ({
       }}
     >
       <ScrollView style={styles.container}>
-        {isRephrasing ? (
-          <View style={styles.titleContainer}>
-            <DoubleAIStarPurple width={28} height={28} />
-            <Text style={[styles.modalTitle, { color: colors.primary }]}>
-              Reformulation par IA
-            </Text>
-          </View>
-        ) : (
-          <View style={styles.titleContainer}>
-            <DoubleAIStarBlack width={28} height={28} />
-            <Text style={[styles.modalTitle, { color: colors.black }]}>
-              Obtenir un feedback
-            </Text>
-          </View>
-        )}
+        <View style={styles.titleContainer}>
+          <DoubleAIStarBlack width={28} height={28} />
+          <Text style={[styles.modalTitle, { color: colors.black }]}>
+            Obtenir un feedback
+          </Text>
+        </View>
         <View>
           {!isTextLoaded && rephrasedText == "" && feedbackText == "" ? (
             <Reanimated.View entering={FadeIn} exiting={FadeOut}>
@@ -215,7 +190,7 @@ const NewPostAIButtonModal: React.FC<NewPostAIButtonModalProps> = ({
   );
 };
 
-export default NewPostAIButtonModal;
+export default FeedBackAIModal;
 
 const Spacer = ({ height = 16 }) => <View style={{ height }} />;
 

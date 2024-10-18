@@ -1,13 +1,11 @@
 import * as React from "react"
 import Svg, { ClipPath, Path, G } from "react-native-svg"
 
-function SafePlaceLogo(props) {
+function SafePlaceLogo(props: any) {
     return (
         <Svg
             fill="none"
-            height={56}
             viewBox="0 0 292 56"
-            width={292}
             xmlns="http://www.w3.org/2000/svg"
             {...props}
         >
