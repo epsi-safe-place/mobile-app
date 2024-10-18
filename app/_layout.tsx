@@ -15,7 +15,7 @@ import { SafeAreaView, ScrollView, Text } from "react-native";
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import LoginPage from "./login";
 import SignupScreen from "./signup";
-import { Slot } from "expo-router";
+import { Slot, Stack } from "expo-router";
 import { UserProvider } from "@/components/contexts/UserContext";
 
 // Prevent the splash screen from auto-hiding before asset loading is complete.
@@ -62,9 +62,24 @@ export default function RootLayout() {
         <ThemeProvider
           value={colorScheme === "dark" ? DarkTheme : DefaultTheme}
         >
-          <SafeAreaView style={{ flex: 1 }}>
-            <Slot />
-          </SafeAreaView>
+          {/* <SafeAreaView style={{ flex: 1 }}> */}
+          {/* <Slot /> */}
+          <Stack>
+            <Stack.Screen
+              name="index"
+              options={{ headerShown: false }} // Désactive le header pour la page index
+            />
+            <Stack.Screen
+              name="post/[id]"
+              options={{ headerShown: false }} // Désactive le header pour la page index
+            />
+            <Stack.Screen
+              name="Profile/Settings"
+              options={{ headerShown: false }} // Désactive le header pour la page index
+            />
+            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+          </Stack>
+          {/* </SafeAreaView> */}
         </ThemeProvider>
       </UserProvider>
     </GestureHandlerRootView>

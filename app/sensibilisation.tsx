@@ -36,7 +36,7 @@ const SensibilisationPage = () => {
       useNativeDriver: true,
     }).start();
     if (user !== null) {
-      router.replace("/home");
+      router.replace("/Accueil");
     } else {
       router.replace("/login");
     }

@@ -11,6 +11,7 @@ import {
   StyleSheet,
   ScrollView,
   RefreshControl,
+  SafeAreaView,
 } from "react-native";
 import Entypo from "@expo/vector-icons/Entypo";
 import { Divider } from "react-native-paper";
@@ -18,6 +19,8 @@ import Comments from "@/service/api/comments";
 import colors from "../styles/theme";
 import NewPostModal from "@/components/NewPostModal/NewPostModal";
 import NewCommentModal from "@/components/NewCommentModal/NewCommentModal";
+import FeedBackAIModal from "@/components/FeedBackAIModal/FeedBackAIModal";
+import { SwipeModalPublicMethods } from "@birdwingo/react-native-swipe-modal";
 
 type Post = {
   Id_Post: string; // Adjusted to string based on the provided data structure
@@ -74,7 +77,12 @@ const PostPage = () => {
   const local = useLocalSearchParams();
   const scrollViewRef = useRef<ScrollView>(null); // Added useRef for ScrollView
 
+  const iaModalRef = useRef<SwipeModalPublicMethods>(null);
+  const showModal = () => iaModalRef.current?.show(); // Call this function to show modal
+  const hideModal = () => iaModalRef.current?.hide(); // Call this function to hide modal
+
   const [modalVisible, setModalVisible] = useState(false);
+  const [selectedPostText, setSelectedPostText] = useState("");
 
   const fetchPostById = async () => {
     try {
@@ -90,14 +98,22 @@ const PostPage = () => {
   const fetchComments = async () => {
     try {
       const response = await Comments.getAllComments(); // Removed argument as per the updated requirement
-      const filteredComments = response.filter(
-        (
-          comment: Comment // Explicitly define the type
-        ) =>
-          comment.Id_Post === (Array.isArray(local.id) ? local.id[0] : local.id)
-      ).sort((a: Comment, b: Comment) => // Explicitly define the type
-          new Date(b.date_upload).getTime() - new Date(a.date_upload).getTime()
-      ); // Sort comments from most recent to oldest
+      const filteredComments = response
+        .filter(
+          (
+            comment: Comment // Explicitly define the type
+          ) =>
+            comment.Id_Post ===
+            String(Array.isArray(local.id) ? local.id[0] : local.id) // Convert to string
+        )
+        .sort(
+          (
+            a: Comment,
+            b: Comment // Explicitly define the type
+          ) =>
+            new Date(b.date_upload).getTime() -
+            new Date(a.date_upload).getTime()
+        ); // Sort comments from most recent to oldest
       setComments(filteredComments);
     } catch (error) {
       console.error("Failed to fetch comments:", error);
@@ -120,64 +136,82 @@ const PostPage = () => {
   };
 
   return (
-    <ScrollView
-      ref={scrollViewRef}
-      refreshControl={
-        <RefreshControl refreshing={false} onRefresh={handleRefresh} />
-      }
-    >
-      <TouchableOpacity
-        onPress={() => router.replace("/home")}
-        style={styles.backButton}
+    <SafeAreaView style={{ flex: 1, backgroundColor: "#fff" }}>
+      <ScrollView
+        ref={scrollViewRef}
+        refreshControl={
+          <RefreshControl refreshing={false} onRefresh={handleRefresh} />
+        }
       >
-        <Entypo name="chevron-left" size={24} color="black" />
-        <Text style={styles.backButtonText}>Retour</Text>
-      </TouchableOpacity>
-      {post && ( // Check if post is defined
-        <PostView
-          key={post.Id_Post} // Use a unique identifier for the key
-          profileName={`${post.user.first_name}${post.user.last_name}`} // Corrected usage
-          postText={post.content}
-          timeAgo={calculateTimeAgo(post.date_creation)}
-          //   commentAction={() => setCommentModalVisible(true)}
-          commentAction={() => setModalVisible(true)}
-        />
-      )}
-      <Text style={{ fontSize: 14, fontFamily: "Helvetica-Bold", padding: 10 }}>
-        Réponses ({comments.length})
-      </Text>
-      <Divider />
-      {comments.length > 0 ? (
-        comments.map((comment) => (
+        <TouchableOpacity
+          onPress={() => router.back()}
+          style={styles.backButton}
+        >
+          <Entypo name="chevron-left" size={24} color="black" />
+          <Text style={styles.backButtonText}>Retour</Text>
+        </TouchableOpacity>
+        {post && ( // Check if post is defined
           <PostView
-            key={comment.Id_Comment} // Use a unique identifier for the key
-            profileName={`${comment.user.first_name}${comment.user.last_name}`} // Corrected usage
-            postText={comment.content}
-            timeAgo={calculateTimeAgo(comment.date_upload)}
+            key={post.Id_Post} // Use a unique identifier for the key
+            postID={post.Id_Post}
+            profileName={`${post.user.first_name}${post.user.last_name}`} // Corrected usage
+            score={post.toxic_score}
+            postText={post.content}
+            timeAgo={calculateTimeAgo(post.date_creation)}
             //   commentAction={() => setCommentModalVisible(true)}
             commentAction={() => setModalVisible(true)}
+            showModal={showModal}
+            setSelectedPostText={setSelectedPostText}
           />
-        ))
-      ) : (
+        )}
         <Text
-          style={{
-            textAlign: "center",
-            fontFamily: "BricolageGrotesque-SemiBold",
-            fontSize: 16,
-            color: colors.primary,
-            paddingVertical: 20,
-          }}
+          style={{ fontSize: 14, fontFamily: "Helvetica-Bold", padding: 10 }}
         >
-          Aucun commentaires
+          Réponses ({comments.length})
         </Text>
-      )}
-      <NewCommentModal
-        modalVisible={modalVisible}
-        setModalVisible={setModalVisible}
-        profilePicturePath=''
-        idPost={Array.isArray(local.id) ? local.id[0] : local.id || ""}
+        <Divider />
+        {comments.length > 0 ? (
+          comments.map((comment) => (
+            <PostView
+              key={comment.Id_Comment} // Use a unique identifier for the key
+              postID={comment.Id_Post}
+              profileName={`${comment.user.first_name}${comment.user.last_name}`} // Corrected usage
+              score={comment.toxic_score}
+              postText={comment.content}
+              timeAgo={calculateTimeAgo(comment.date_upload)}
+              //   commentAction={() => setCommentModalVisible(true)}
+              commentAction={() => setModalVisible(true)}
+              showModal={showModal}
+              setSelectedPostText={setSelectedPostText}
+            />
+          ))
+        ) : (
+          <Text
+            style={{
+              textAlign: "center",
+              fontFamily: "BricolageGrotesque-SemiBold",
+              fontSize: 16,
+              color: colors.primary,
+              paddingVertical: 20,
+            }}
+          >
+            Aucun commentaires
+          </Text>
+        )}
+        <NewCommentModal
+          modalVisible={modalVisible}
+          setModalVisible={setModalVisible}
+          profilePicturePath=""
+          idPost={Array.isArray(local.id) ? local.id[0] : local.id || ""}
+        />
+      </ScrollView>
+
+      <FeedBackAIModal
+        reference={iaModalRef}
+        postMessage={selectedPostText}
+        hideModal={hideModal}
       />
-    </ScrollView>
+    </SafeAreaView>
   );
 };
 

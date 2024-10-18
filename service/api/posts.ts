@@ -11,6 +11,17 @@ export default class Posts {
       return error;
     }
   }
+  static async getAllPostsExceptMe(userId: string) {
+    try {
+      const response = await axios.get(
+        `${API_URL}/posts/feed?excludeUserId=${userId}`
+      );
+      return response.data;
+    } catch (error) {
+      console.error(error);
+      return error;
+    }
+  }
 
   static async getById(id: string) {
     try {
@@ -22,7 +33,11 @@ export default class Posts {
     }
   }
 
-  static async postOne(userID: string = "", content: string, toxic_score: number) {
+  static async postOne(
+    userID: string = "",
+    content: string,
+    toxic_score: number
+  ) {
     try {
       const response = await axios.post(`${API_URL}/posts`, {
         content,

@@ -32,7 +32,7 @@ const LoginPage = () => {
       const response = await User.getById(DEMO_USER_ID);
       saveUser(response);
 
-      router.replace("/home"); // Passer les paramètres dans un objet
+      router.replace("/Accueil"); // Passer les paramètres dans un objet
       console.log("Email:", email, "Password:", password);
     } catch (error) {
       setIsErrorThrown(true);
